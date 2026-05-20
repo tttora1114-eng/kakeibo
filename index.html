@@ -1,0 +1,655 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>家計簿アプリ</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.31.0/dist/tabler-icons.min.css">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --primary: #1a1a2e;
+    --accent: #e94560;
+    --income: #0f6e56;
+    --expense: #a32d2d;
+    --bg: #f8f7f4;
+    --surface: #ffffff;
+    --border: rgba(0,0,0,0.08);
+    --text: #1a1a2e;
+    --text2: #6b6b7b;
+    --radius: 16px;
+    --radius-sm: 10px;
+  }
+  body {
+    font-family: 'Hiragino Kaku Gothic ProN', 'Noto Sans JP', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    max-width: 430px;
+    margin: 0 auto;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+  .header {
+    background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+    color: white;
+    padding: 20px 20px 40px;
+    position: relative;
+    overflow: hidden;
+  }
+  .header::before {
+    content: '';
+    position: absolute;
+    top: -30px; right: -30px;
+    width: 120px; height: 120px;
+    border-radius: 50%;
+    background: rgba(233,69,96,0.15);
+  }
+  .header::after {
+    content: '';
+    position: absolute;
+    bottom: -20px; left: 30px;
+    width: 80px; height: 80px;
+    border-radius: 50%;
+    background: rgba(233,69,96,0.1);
+  }
+  .header-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
+  .app-title { font-size: 20px; font-weight: 700; }
+  .month-nav { display: flex; align-items: center; gap: 12px; }
+  .month-nav button {
+    background: rgba(255,255,255,0.15); border: none; color: white;
+    width: 32px; height: 32px; border-radius: 50%;
+    cursor: pointer; font-size: 16px;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .month-label { font-size: 15px; font-weight: 600; min-width: 80px; text-align: center; }
+  .balance-card {
+    background: rgba(255,255,255,0.1);
+    border-radius: var(--radius); padding: 16px;
+    border: 1px solid rgba(255,255,255,0.15);
+  }
+  .balance-label { font-size: 12px; opacity: 0.7; margin-bottom: 4px; }
+  .balance-amount { font-size: 32px; font-weight: 700; }
+  .balance-sub { display: flex; gap: 16px; margin-top: 12px; }
+  .balance-sub-item { flex: 1; }
+  .balance-sub-label { font-size: 11px; opacity: 0.6; margin-bottom: 2px; display: flex; align-items: center; gap: 4px; }
+  .balance-sub-amount { font-size: 16px; font-weight: 600; }
+  .income-color { color: #5DCAA5; }
+  .expense-color { color: #F09595; }
+  .content { padding: 0 16px 100px; margin-top: -20px; }
+  .card {
+    background: var(--surface); border-radius: var(--radius);
+    padding: 16px; margin-bottom: 12px;
+    border: 1px solid var(--border);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+  }
+  .card-title { font-size: 13px; font-weight: 600; color: var(--text2); margin-bottom: 12px; text-transform: uppercase; letter-spacing: 0.05em; }
+  .tx-item {
+    display: flex; align-items: center; gap: 12px;
+    padding: 10px 0; border-bottom: 1px solid var(--border);
+  }
+  .tx-item:last-child { border-bottom: none; }
+  .tx-icon {
+    width: 40px; height: 40px; border-radius: 12px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 18px; flex-shrink: 0;
+  }
+  .tx-icon.income { background: #E1F5EE; }
+  .tx-icon.expense { background: #FCEBEB; }
+  .tx-info { flex: 1; min-width: 0; }
+  .tx-cat { font-size: 14px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .tx-meta { font-size: 12px; color: var(--text2); margin-top: 2px; }
+  .tx-amount { font-size: 16px; font-weight: 700; }
+  .tx-amount.income { color: var(--income); }
+  .tx-amount.expense { color: var(--expense); }
+  .budget-item { margin-bottom: 14px; }
+  .budget-header { display: flex; justify-content: space-between; font-size: 13px; margin-bottom: 6px; }
+  .budget-cat { font-weight: 600; }
+  .budget-nums { color: var(--text2); }
+  .budget-bar { height: 8px; background: #f0ece8; border-radius: 4px; overflow: hidden; }
+  .budget-progress { height: 100%; border-radius: 4px; }
+  .progress-ok { background: linear-gradient(90deg, #1D9E75, #5DCAA5); }
+  .progress-warn { background: linear-gradient(90deg, #BA7517, #EF9F27); }
+  .progress-over { background: linear-gradient(90deg, #A32D2D, #E24B4A); }
+  .fab {
+    position: fixed; bottom: 84px; right: 20px;
+    width: 56px; height: 56px;
+    background: var(--accent); color: white;
+    border: none; border-radius: 50%; font-size: 28px;
+    cursor: pointer; display: flex; align-items: center; justify-content: center;
+    box-shadow: 0 4px 16px rgba(233,69,96,0.4); z-index: 100;
+  }
+  .bottom-nav {
+    position: fixed; bottom: 0; left: 50%; transform: translateX(-50%);
+    width: 100%; max-width: 430px;
+    background: var(--surface); border-top: 1px solid var(--border);
+    display: flex; padding: 8px 0 16px; z-index: 99;
+  }
+  .nav-item {
+    flex: 1; display: flex; flex-direction: column; align-items: center;
+    gap: 4px; cursor: pointer; border: none; background: none;
+    color: var(--text2); padding: 4px;
+  }
+  .nav-item.active { color: var(--accent); }
+  .nav-item i { font-size: 22px; }
+  .nav-item span { font-size: 10px; font-weight: 600; }
+  .modal-overlay {
+    display: none; position: fixed; inset: 0;
+    background: rgba(0,0,0,0.5); z-index: 200;
+    align-items: flex-end; justify-content: center;
+  }
+  .modal-overlay.open { display: flex; }
+  .modal {
+    background: var(--surface); border-radius: 24px 24px 0 0;
+    padding: 24px 20px 40px; width: 100%; max-width: 430px;
+    animation: slideUp 0.3s ease; max-height: 90vh; overflow-y: auto;
+  }
+  @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
+  .modal-handle { width: 36px; height: 4px; background: var(--border); border-radius: 2px; margin: 0 auto 20px; }
+  .modal-title { font-size: 18px; font-weight: 700; margin-bottom: 20px; }
+  .type-toggle { display: flex; background: var(--bg); border-radius: var(--radius-sm); padding: 3px; margin-bottom: 16px; }
+  .type-btn {
+    flex: 1; padding: 8px; border: none; border-radius: 8px;
+    font-size: 14px; font-weight: 600; cursor: pointer;
+    background: none; color: var(--text2);
+  }
+  .type-btn.active.expense { background: #FCEBEB; color: var(--expense); }
+  .type-btn.active.income { background: #E1F5EE; color: var(--income); }
+  .form-group { margin-bottom: 16px; }
+  .form-label { font-size: 12px; font-weight: 600; color: var(--text2); margin-bottom: 6px; display: block; text-transform: uppercase; letter-spacing: 0.05em; }
+  .form-input, .form-select {
+    width: 100%; padding: 12px 14px;
+    border: 1.5px solid var(--border); border-radius: var(--radius-sm);
+    font-size: 15px; background: var(--bg); color: var(--text);
+    outline: none; font-family: inherit;
+  }
+  .form-input:focus, .form-select:focus { border-color: var(--accent); }
+  .amount-input { font-size: 24px; font-weight: 700; text-align: center; }
+  .cat-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+  .cat-btn {
+    padding: 10px 6px; border: 1.5px solid var(--border);
+    border-radius: var(--radius-sm); background: var(--bg);
+    font-size: 12px; font-weight: 600; cursor: pointer;
+    text-align: center; color: var(--text2);
+  }
+  .cat-btn.selected.expense { border-color: var(--expense); background: #FCEBEB; color: var(--expense); }
+  .cat-btn.selected.income { border-color: var(--income); background: #E1F5EE; color: var(--income); }
+  .submit-btn {
+    width: 100%; padding: 16px; background: var(--accent);
+    color: white; border: none; border-radius: var(--radius-sm);
+    font-size: 16px; font-weight: 700; cursor: pointer; margin-top: 8px;
+  }
+  .submit-btn:disabled { background: var(--text2); cursor: not-allowed; }
+  .page { display: none; }
+  .page.active { display: block; }
+  .loading-spinner { text-align: center; padding: 40px; color: var(--text2); font-size: 14px; }
+  .empty-state { text-align: center; padding: 40px 20px; color: var(--text2); }
+  .empty-state i { font-size: 48px; margin-bottom: 12px; opacity: 0.3; display: block; }
+  .chart-bar-wrap { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+  .chart-label { font-size: 12px; width: 60px; text-align: right; flex-shrink: 0; color: var(--text2); }
+  .chart-bar-bg { flex: 1; background: #f0ece8; border-radius: 4px; height: 10px; overflow: hidden; }
+  .chart-bar-fill { height: 100%; border-radius: 4px; background: var(--accent); }
+  .chart-val { font-size: 12px; width: 64px; flex-shrink: 0; font-weight: 600; }
+  .accounts-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
+  .account-card { color: white; border-radius: var(--radius-sm); padding: 14px; }
+  .account-name { font-size: 13px; font-weight: 700; margin-bottom: 4px; }
+  .account-type { font-size: 11px; opacity: 0.6; margin-bottom: 10px; }
+  .account-balance { font-size: 20px; font-weight: 700; }
+  .delete-btn { background: none; border: none; color: #E24B4A; cursor: pointer; font-size: 18px; padding: 4px; opacity: 0.6; }
+  .toast {
+    position: fixed; top: 20px; left: 50%; transform: translateX(-50%);
+    background: #1a1a2e; color: white; padding: 12px 20px;
+    border-radius: 20px; font-size: 14px; font-weight: 600;
+    z-index: 999; opacity: 0; transition: opacity 0.3s; white-space: nowrap;
+  }
+  .toast.show { opacity: 1; }
+  .stat-row { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid var(--border); }
+  .stat-row:last-child { border-bottom: none; }
+  .stat-label { font-size: 14px; color: var(--text2); }
+  .stat-val { font-size: 14px; font-weight: 700; }
+</style>
+</head>
+<body>
+
+<div class="toast" id="toast"></div>
+
+<div class="header">
+  <div class="header-top">
+    <div class="app-title">💰 家計簿</div>
+    <div class="month-nav">
+      <button onclick="changeMonth(-1)"><i class="ti ti-chevron-left"></i></button>
+      <span class="month-label" id="monthLabel">----年--月</span>
+      <button onclick="changeMonth(1)"><i class="ti ti-chevron-right"></i></button>
+    </div>
+  </div>
+  <div class="balance-card">
+    <div class="balance-label">今月の収支</div>
+    <div class="balance-amount" id="balanceAmount">¥0</div>
+    <div class="balance-sub">
+      <div class="balance-sub-item">
+        <div class="balance-sub-label income-color"><i class="ti ti-trending-up" style="font-size:12px"></i> 収入</div>
+        <div class="balance-sub-amount income-color" id="totalIncome">¥0</div>
+      </div>
+      <div class="balance-sub-item">
+        <div class="balance-sub-label expense-color"><i class="ti ti-trending-down" style="font-size:12px"></i> 支出</div>
+        <div class="balance-sub-amount expense-color" id="totalExpense">¥0</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="content">
+  <div class="page active" id="page-home">
+    <div class="card">
+      <div class="card-title">今月の明細</div>
+      <div id="txList"><div class="loading-spinner"><i class="ti ti-loader-2"></i> 読み込み中...</div></div>
+    </div>
+  </div>
+
+  <div class="page" id="page-budget">
+    <div class="card">
+      <div class="card-title">予算管理</div>
+      <div id="budgetList"><div class="loading-spinner"><i class="ti ti-loader-2"></i> 読み込み中...</div></div>
+    </div>
+  </div>
+
+  <div class="page" id="page-report">
+    <div class="card">
+      <div class="card-title">カテゴリ別支出</div>
+      <div id="reportChart"></div>
+    </div>
+    <div class="card">
+      <div class="card-title">月次サマリー</div>
+      <div id="reportSummary"></div>
+    </div>
+  </div>
+
+  <div class="page" id="page-accounts">
+    <div class="accounts-grid" id="accountsGrid"></div>
+    <div style="margin-top:12px">
+      <button class="submit-btn" onclick="openAddAccount()" style="background:var(--primary)">
+        <i class="ti ti-plus"></i> 口座を追加
+      </button>
+    </div>
+  </div>
+</div>
+
+<button class="fab" onclick="openAddTx()"><i class="ti ti-plus"></i></button>
+
+<nav class="bottom-nav">
+  <button class="nav-item active" onclick="showPage('home',this)">
+    <i class="ti ti-home"></i><span>ホーム</span>
+  </button>
+  <button class="nav-item" onclick="showPage('budget',this)">
+    <i class="ti ti-chart-donut"></i><span>予算</span>
+  </button>
+  <button class="nav-item" onclick="showPage('report',this)">
+    <i class="ti ti-chart-bar"></i><span>レポート</span>
+  </button>
+  <button class="nav-item" onclick="showPage('accounts',this)">
+    <i class="ti ti-credit-card"></i><span>口座</span>
+  </button>
+</nav>
+
+<!-- 取引追加モーダル -->
+<div class="modal-overlay" id="addTxModal">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-title">取引を追加</div>
+    <div class="type-toggle">
+      <button class="type-btn active expense" id="typeExpense" onclick="setType('expense')">支出</button>
+      <button class="type-btn" id="typeIncome" onclick="setType('income')">収入</button>
+    </div>
+    <div class="form-group">
+      <label class="form-label">金額</label>
+      <input class="form-input amount-input" type="number" id="txAmount" placeholder="0" min="0">
+    </div>
+    <div class="form-group">
+      <label class="form-label">カテゴリ</label>
+      <div class="cat-grid" id="catGrid"></div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">口座</label>
+      <select class="form-select" id="txAccount"></select>
+    </div>
+    <div class="form-group">
+      <label class="form-label">日付</label>
+      <input class="form-input" type="date" id="txDate">
+    </div>
+    <div class="form-group">
+      <label class="form-label">メモ（任意）</label>
+      <input class="form-input" type="text" id="txNote" placeholder="メモを入力...">
+    </div>
+    <button class="submit-btn" id="submitTx" onclick="submitTransaction()">追加する</button>
+    <button onclick="closeModal('addTxModal')" style="width:100%;padding:12px;background:none;border:none;color:var(--text2);font-size:14px;cursor:pointer;margin-top:8px">キャンセル</button>
+  </div>
+</div>
+
+<!-- 口座追加モーダル -->
+<div class="modal-overlay" id="addAccountModal">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-title">口座を追加</div>
+    <div class="form-group">
+      <label class="form-label">口座名</label>
+      <input class="form-input" type="text" id="accName" placeholder="例：三菱UFJ銀行">
+    </div>
+    <div class="form-group">
+      <label class="form-label">種類</label>
+      <select class="form-select" id="accType">
+        <option value="銀行">銀行</option>
+        <option value="現金">現金</option>
+        <option value="クレジット">クレジット</option>
+        <option value="投資">投資</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label class="form-label">初期残高</label>
+      <input class="form-input" type="number" id="accBalance" placeholder="0" min="0">
+    </div>
+    <button class="submit-btn" onclick="submitAccount()">追加する</button>
+    <button onclick="closeModal('addAccountModal')" style="width:100%;padding:12px;background:none;border:none;color:var(--text2);font-size:14px;cursor:pointer;margin-top:8px">キャンセル</button>
+  </div>
+</div>
+
+<script>
+const GAS_URL = 'https://script.google.com/macros/s/AKfycbxKmhneS6tK1Jb5qXEBBMZCcO2v_Hcq-g8YBNvQcTD401FIeEVN-Z2kh4bJ_HgJ2tJD/exec';
+
+const EXPENSE_CATS = ['食費','交通費','光熱費','通信費','医療費','娯楽','日用品','外食','衣類','教育','その他'];
+const INCOME_CATS  = ['給与','副業','ボーナス','利子','その他収入'];
+const CAT_ICONS = {
+  '食費':'🛒','交通費':'🚃','光熱費':'💡','通信費':'📱','医療費':'🏥',
+  '娯楽':'🎮','日用品':'🏠','外食':'🍜','衣類':'👗','教育':'📚','その他':'📦',
+  '給与':'💴','副業':'💻','ボーナス':'🎁','利子':'🏦','その他収入':'💰'
+};
+
+let currentType = 'expense';
+let selectedCat = '';
+let currentYear, currentMonth;
+let allTransactions = [], allAccounts = [], allBudgets = [];
+
+const fmt = n => '¥' + Math.round(n).toLocaleString('ja-JP');
+
+function init() {
+  const now = new Date();
+  currentYear = now.getFullYear();
+  currentMonth = now.getMonth() + 1;
+  updateMonthLabel();
+  loadAll();
+}
+
+function updateMonthLabel() {
+  document.getElementById('monthLabel').textContent = `${currentYear}年${currentMonth}月`;
+}
+
+function changeMonth(d) {
+  currentMonth += d;
+  if (currentMonth > 12) { currentMonth = 1; currentYear++; }
+  if (currentMonth < 1)  { currentMonth = 12; currentYear--; }
+  updateMonthLabel();
+  renderAll();
+}
+
+async function apiGet(action, params='') {
+  try {
+    const r = await fetch(`${GAS_URL}?action=${action}${params}`);
+    return await r.json();
+  } catch(e) { return null; }
+}
+
+async function apiPost(action, body) {
+  try {
+    const r = await fetch(`${GAS_URL}?action=${action}`, {
+      method: 'POST',
+      body: JSON.stringify(body)
+    });
+    return await r.json();
+  } catch(e) { return null; }
+}
+
+async function loadAll() {
+  const [txRes, accRes, budRes] = await Promise.all([
+    apiGet('getTransactions'),
+    apiGet('getAccounts'),
+    apiGet('getBudgets')
+  ]);
+  if (txRes?.transactions)  allTransactions = txRes.transactions;
+  if (accRes?.accounts)     allAccounts = accRes.accounts;
+  if (budRes?.budgets)      allBudgets = budRes.budgets;
+  renderAll();
+}
+
+function getMonthTx() {
+  const ym = `${currentYear}-${String(currentMonth).padStart(2,'0')}`;
+  return allTransactions.filter(t => String(t.date || '').startsWith(ym));
+}
+
+function renderAll() {
+  renderHeader();
+  renderTxList();
+  renderBudgets();
+  renderReport();
+  renderAccounts();
+}
+
+function renderHeader() {
+  const txs = getMonthTx();
+  let income = 0, expense = 0;
+  txs.forEach(t => {
+    const amt = parseFloat(t.amount) || 0;
+    if (t.type === 'income') income += amt;
+    else expense += amt;
+  });
+  document.getElementById('totalIncome').textContent  = fmt(income);
+  document.getElementById('totalExpense').textContent = fmt(expense);
+  const bal = income - expense;
+  const el = document.getElementById('balanceAmount');
+  el.textContent = (bal < 0 ? '-' : '') + fmt(Math.abs(bal));
+  el.style.color = bal >= 0 ? '#5DCAA5' : '#F09595';
+}
+
+function renderTxList() {
+  const txs = getMonthTx().slice().sort((a,b) => (b.date||'').localeCompare(a.date||''));
+  const el = document.getElementById('txList');
+  if (!txs.length) {
+    el.innerHTML = '<div class="empty-state"><i class="ti ti-receipt-off"></i>取引がありません</div>';
+    return;
+  }
+  el.innerHTML = txs.map(t => {
+    const isInc = t.type === 'income';
+    const icon = CAT_ICONS[t.category] || '📦';
+    const d = t.date ? t.date.substring(5) : '';
+    return `<div class="tx-item">
+      <div class="tx-icon ${isInc ? 'income' : 'expense'}">${icon}</div>
+      <div class="tx-info">
+        <div class="tx-cat">${t.category || '不明'}</div>
+        <div class="tx-meta">${d}${t.account ? ' · ' + t.account : ''}${t.note ? ' · ' + t.note : ''}</div>
+      </div>
+      <span class="tx-amount ${isInc ? 'income' : 'expense'}">${isInc?'+':'−'}${fmt(t.amount)}</span>
+      <button class="delete-btn" onclick="deleteTx('${t.id}',event)"><i class="ti ti-trash"></i></button>
+    </div>`;
+  }).join('');
+}
+
+async function deleteTx(id, e) {
+  e.stopPropagation();
+  if (!confirm('この取引を削除しますか？')) return;
+  const res = await apiGet('deleteTransaction', `&id=${id}`);
+  if (res?.success) {
+    allTransactions = allTransactions.filter(t => t.id !== id);
+    renderAll();
+    showToast('削除しました');
+  } else {
+    showToast('削除に失敗しました');
+  }
+}
+
+function renderBudgets() {
+  const ym = `${currentYear}-${String(currentMonth).padStart(2,'0')}`;
+  const txs = getMonthTx();
+  const el = document.getElementById('budgetList');
+  const relevantBudgets = allBudgets.filter(b => b.year_month === ym);
+  if (!relevantBudgets.length) {
+    el.innerHTML = '<div class="empty-state"><i class="ti ti-chart-pie"></i>この月の予算が未設定です</div>';
+    return;
+  }
+  el.innerHTML = relevantBudgets.map(b => {
+    const spent = txs.filter(t => t.category === b.category && t.type === 'expense')
+                     .reduce((s, t) => s + (parseFloat(t.amount)||0), 0);
+    const budget = parseFloat(b.budget_amount) || 0;
+    const pct = budget > 0 ? Math.min(100, Math.round(spent/budget*100)) : 0;
+    const cls = pct >= 100 ? 'progress-over' : pct >= 80 ? 'progress-warn' : 'progress-ok';
+    return `<div class="budget-item">
+      <div class="budget-header">
+        <span class="budget-cat">${CAT_ICONS[b.category]||'📦'} ${b.category}</span>
+        <span class="budget-nums">${fmt(spent)} / ${fmt(budget)} (${pct}%)</span>
+      </div>
+      <div class="budget-bar"><div class="budget-progress ${cls}" style="width:${pct}%"></div></div>
+    </div>`;
+  }).join('');
+}
+
+function renderReport() {
+  const txs = getMonthTx();
+  const catMap = {};
+  txs.filter(t => t.type === 'expense').forEach(t => {
+    catMap[t.category] = (catMap[t.category]||0) + (parseFloat(t.amount)||0);
+  });
+  const sorted = Object.entries(catMap).sort((a,b) => b[1]-a[1]);
+  const maxAmt = sorted[0]?.[1] || 1;
+  const el = document.getElementById('reportChart');
+  if (!sorted.length) {
+    el.innerHTML = '<div class="empty-state"><i class="ti ti-chart-bar-off"></i>データなし</div>';
+  } else {
+    el.innerHTML = sorted.map(([cat, amt]) => `
+      <div class="chart-bar-wrap">
+        <span class="chart-label">${CAT_ICONS[cat]||''}${cat}</span>
+        <div class="chart-bar-bg">
+          <div class="chart-bar-fill" style="width:${Math.round(amt/maxAmt*100)}%"></div>
+        </div>
+        <span class="chart-val">${fmt(amt)}</span>
+      </div>`).join('');
+  }
+  const income = txs.filter(t=>t.type==='income').reduce((s,t)=>s+(parseFloat(t.amount)||0),0);
+  const expense = txs.filter(t=>t.type==='expense').reduce((s,t)=>s+(parseFloat(t.amount)||0),0);
+  document.getElementById('reportSummary').innerHTML = `
+    <div class="stat-row"><span class="stat-label">収入合計</span><span class="stat-val income-color">${fmt(income)}</span></div>
+    <div class="stat-row"><span class="stat-label">支出合計</span><span class="stat-val expense-color">${fmt(expense)}</span></div>
+    <div class="stat-row"><span class="stat-label">収支</span><span class="stat-val" style="color:${income-expense>=0?'var(--income)':'var(--expense)'}">${fmt(income-expense)}</span></div>
+    <div class="stat-row"><span class="stat-label">取引件数</span><span class="stat-val">${txs.length}件</span></div>
+  `;
+}
+
+function renderAccounts() {
+  const el = document.getElementById('accountsGrid');
+  if (!allAccounts.length) {
+    el.innerHTML = '<div class="empty-state"><i class="ti ti-credit-card-off"></i>口座がありません</div>';
+    return;
+  }
+  const typeColors = { '銀行':'#1a1a2e', '現金':'#0f4c3a', 'クレジット':'#6b1a3a', '投資':'#1a3a6b' };
+  el.innerHTML = allAccounts.map(a => {
+    const bg = typeColors[a.type] || '#1a1a2e';
+    const txTotal = allTransactions.filter(t => t.account === a.name)
+      .reduce((s,t) => s + (t.type==='income'?1:-1)*(parseFloat(t.amount)||0), 0);
+    const balance = (parseFloat(a.initial_balance)||0) + txTotal;
+    return `<div class="account-card" style="background:${bg}">
+      <div class="account-name">${a.name}</div>
+      <div class="account-type">${a.type}</div>
+      <div class="account-balance">${fmt(balance)}</div>
+    </div>`;
+  }).join('');
+}
+
+function showPage(name, btn) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  document.getElementById('page-'+name).classList.add('active');
+  btn.classList.add('active');
+}
+
+function openAddTx() {
+  selectedCat = '';
+  setType('expense');
+  document.getElementById('txAmount').value = '';
+  document.getElementById('txNote').value = '';
+  document.getElementById('txDate').value = new Date().toISOString().split('T')[0];
+  const sel = document.getElementById('txAccount');
+  sel.innerHTML = allAccounts.map(a => `<option value="${a.name}">${a.name}</option>`).join('') || '<option>口座なし</option>';
+  document.getElementById('addTxModal').classList.add('open');
+}
+
+function setType(type) {
+  currentType = type;
+  const cats = type === 'expense' ? EXPENSE_CATS : INCOME_CATS;
+  document.getElementById('typeExpense').className = `type-btn${type==='expense'?' active expense':''}`;
+  document.getElementById('typeIncome').className  = `type-btn${type==='income'?' active income':''}`;
+  selectedCat = '';
+  document.getElementById('catGrid').innerHTML = cats.map(c =>
+    `<button class="cat-btn" onclick="selectCat('${c}',this)">${CAT_ICONS[c]||''} ${c}</button>`
+  ).join('');
+}
+
+function selectCat(cat, btn) {
+  selectedCat = cat;
+  document.querySelectorAll('.cat-btn').forEach(b => b.classList.remove('selected','expense','income'));
+  btn.classList.add('selected', currentType);
+}
+
+async function submitTransaction() {
+  const amount = parseFloat(document.getElementById('txAmount').value);
+  const date   = document.getElementById('txDate').value;
+  const account = document.getElementById('txAccount').value;
+  const note   = document.getElementById('txNote').value;
+  if (!amount || !selectedCat || !date) { showToast('金額・カテゴリ・日付は必須です'); return; }
+  const btn = document.getElementById('submitTx');
+  btn.disabled = true; btn.textContent = '送信中...';
+  const res = await apiPost('addTransaction', { date, account, category: selectedCat, type: currentType, amount, note });
+  btn.disabled = false; btn.textContent = '追加する';
+  if (res?.success) {
+    allTransactions.push({ id: res.id, date, account, category: selectedCat, type: currentType, amount, note });
+    closeModal('addTxModal');
+    renderAll();
+    showToast('追加しました！');
+  } else {
+    showToast('エラーが発生しました');
+  }
+}
+
+function openAddAccount() {
+  document.getElementById('accName').value = '';
+  document.getElementById('accBalance').value = '';
+  document.getElementById('addAccountModal').classList.add('open');
+}
+
+async function submitAccount() {
+  const name = document.getElementById('accName').value.trim();
+  const type = document.getElementById('accType').value;
+  const initial_balance = parseFloat(document.getElementById('accBalance').value) || 0;
+  if (!name) { showToast('口座名を入力してください'); return; }
+  const res = await apiPost('addAccount', { name, type, initial_balance });
+  if (res?.success) {
+    allAccounts.push({ id: res.id, name, type, initial_balance });
+    closeModal('addAccountModal');
+    renderAll();
+    showToast('口座を追加しました！');
+  } else {
+    showToast('エラーが発生しました');
+  }
+}
+
+function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2500);
+}
+
+document.querySelectorAll('.modal-overlay').forEach(m => {
+  m.addEventListener('click', e => { if (e.target === m) m.classList.remove('open'); });
+});
+
+init();
+</script>
+</body>
+</html>
